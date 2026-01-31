@@ -362,43 +362,43 @@ namespace Company.Function
             return new OkObjectResult("");
         }
 
-        // [Function("GetLogData")]
-        // public async Task<IActionResult> GetLogData(
-        //     [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req
-        // )
-        // {
-        //     string tokenKey = req.Query["token"];
-        //     // string str_log = await SqlFunctions.IsOneLifeUrlConsumed(tokenKey);
-        //     string str_log = await SqlFunctions.IsOneLifeUrlExpired(tokenKey);
-        //     _logger.LogInformation("str_log: {str_log}", str_log);
+        [Function("GetLogData")]
+        public async Task<IActionResult> GetLogData(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req
+        )
+        {
+            string tokenKey = req.Query["token"];
+            // string str_log = await SqlFunctions.IsOneLifeUrlConsumed(tokenKey);
+            string str_log = await SqlFunctions.IsOneLifeUrlExpired(tokenKey);
+            _logger.LogInformation("str_log: {str_log}", str_log);
 
-        //     var log = JsonNode.Parse(str_log).AsObject();
-        //     string logId = (string)log["LogId"];
+            var log = JsonNode.Parse(str_log).AsObject();
+            string logId = (string)log["LogId"];
 
-        //     _logger.LogInformation("log: {log}", log);
-        //     DateTime? ttl = log["TTL"]?.GetValue<DateTime?>();
-        //     _logger.LogInformation("ttl: {TTL}", ttl);
+            _logger.LogInformation("log: {log}", log);
+            DateTime? ttl = log["TTL"]?.GetValue<DateTime?>();
+            _logger.LogInformation("ttl: {TTL}", ttl);
 
-        //     if (logId == "Not Found" || !ttl.HasValue || ttl.Value < DateTime.UtcNow)
-        //     {
-        //         return new NotFoundResult();
-        //     }
+            if (logId == "Not Found" || !ttl.HasValue || ttl.Value < DateTime.UtcNow)
+            {
+                return new NotFoundResult();
+            }
 
-        //     Tag local_tag = await CosmosFunctions.GetTagInfo(logId);
-        //     List<Record> list_records = await CosmosFunctions.GetRecordsByTagId(logId);
-        //     int? view_mode = log["Mode"]?.GetValue<int>();
+            Tag local_tag = await CosmosFunctions.GetTagInfo(logId);
+            List<Record> list_records = await CosmosFunctions.GetRecordsByTagId(logId);
+            int? view_mode = log["Mode"]?.GetValue<int>();
 
-        //     // await SqlFunctions.CommitOneLifeUrlComsumed(tokenKey);
+            // await SqlFunctions.CommitOneLifeUrlComsumed(tokenKey);
 
-        //     return new OkObjectResult(
-        //         new
-        //         {
-        //             tag = local_tag,
-        //             records = list_records,
-        //             mode = view_mode,
-        //         }
-        //     );
-        // }
+            return new OkObjectResult(
+                new
+                {
+                    tag = local_tag,
+                    records = list_records,
+                    mode = view_mode,
+                }
+            );
+        }
 
         [Function("GetLogDataForGarage")]
         public async Task<IActionResult> GetLogDataForGarage(
