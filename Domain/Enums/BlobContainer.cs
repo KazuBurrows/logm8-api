@@ -1,0 +1,4 @@
+public enum BlobContainer
+{
+    Receipts,
+}
