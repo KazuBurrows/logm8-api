@@ -1,6 +1,11 @@
-using System.Text.Json.Nodes;
+using LogMate.Domain.Enums;
+using LogMate.Domain.Models;
+using LogMate.Infrastructure.Data.Interfaces;
+using LogMate.Infrastructure.Extensions;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Data.SqlClient;
+
+namespace LogMate.Infrastructure.Data.Repositories;
 
 public class NfcTagRepository : INfcTagRepository
 {
@@ -32,10 +37,8 @@ public class NfcTagRepository : INfcTagRepository
     {
         var container = _factory.GetContainer(CosmosContainer.Records.GetName());
 
-        var query = new QueryDefinition("SELECT * FROM c WHERE c.TagId = @oldTagId").WithParameter(
-            "@oldTagId",
-            oldTagId
-        );
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.TagId = @oldTagId")
+            .WithParameter("@oldTagId", oldTagId);
 
         using var iterator = container.GetItemQueryIterator<Record>(
             query,
@@ -52,17 +55,11 @@ public class NfcTagRepository : INfcTagRepository
             {
                 var oldId = record.id;
 
-                // ---- mutate record for new partition ----
                 record.id = Guid.NewGuid().ToString();
                 record.TagId = newTagId;
-
-                // Optional audit fields
                 record.Comment += $" (Migrated from TagId {oldTagId} at {DateTime.UtcNow})";
 
-                // ---- create new record in new partition ----
                 await container.CreateItemAsync(record, new PartitionKey(newTagId));
-
-                // ---- delete old record ----
                 await container.DeleteItemAsync<Record>(oldId, new PartitionKey(oldTagId));
 
                 migratedCount++;
@@ -78,24 +75,20 @@ public class NfcTagRepository : INfcTagRepository
 
         try
         {
-            // Fix TagId format. '+' lost when in url and is decoded to ' '.
             string tagId = tag.TagId.Replace(" ", "+");
             tag.TagId = tagId;
 
-            // Create a query to retrieve the item using TagId as the partition key
             var queryDefinition = new QueryDefinition(
                 "SELECT * FROM c WHERE c.TagId = @tagId"
             ).WithParameter("@tagId", tagId);
 
             var iterator = container.GetItemQueryIterator<Tag>(queryDefinition);
 
-            // Execute the query
             while (iterator.HasMoreResults)
             {
                 var response = await iterator.ReadNextAsync();
                 foreach (var item in response)
                 {
-                    // Modify the fields you want to update
                     item.Make = tag.Make;
                     item.Model = tag.Model;
                     item.Year = tag.Year;
@@ -109,7 +102,6 @@ public class NfcTagRepository : INfcTagRepository
                     item.LicencePlate = tag.LicencePlate;
                     item.IsConfigured = true;
 
-                    // Replace the item in Cosmos DB
                     await container.ReplaceItemAsync(item, item.id, new PartitionKey(item.TagId));
 
                     return true;

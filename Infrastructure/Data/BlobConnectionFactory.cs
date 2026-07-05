@@ -1,6 +1,8 @@
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 
+namespace LogMate.Infrastructure.Data;
+
 public class BlobConnectionFactory
 {
     private readonly BlobServiceClient _blobServiceClient;

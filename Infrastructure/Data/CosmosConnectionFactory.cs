@@ -1,6 +1,8 @@
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
 
+namespace LogMate.Infrastructure.Data;
+
 public class CosmosConnectionFactory
 {
     private readonly CosmosClient _client;

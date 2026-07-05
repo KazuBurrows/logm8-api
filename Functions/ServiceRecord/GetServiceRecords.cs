@@ -1,3 +1,5 @@
+using LogMate.Application.Exceptions;
+using LogMate.Application.Interfaces;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -24,11 +26,7 @@ public class GetServiceRecords
         string token = query["token"];
 
         if (string.IsNullOrEmpty(token))
-        {
-            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-            await badResponse.WriteStringAsync("Missing token parameter");
-            return badResponse;
-        }
+            throw new ApiException(HttpStatusCode.BadRequest, "Missing token parameter");
 
         string str_log = await SqlFunctions.IsOneLifeUrlConsumed(token);
 
@@ -36,11 +34,7 @@ public class GetServiceRecords
         string logId = log?["LogId"]?.ToString();
 
         if (string.IsNullOrEmpty(logId))
-        {
-            var notFound = req.CreateResponse(HttpStatusCode.NotFound);
-            await notFound.WriteStringAsync("LogId not found");
-            return notFound;
-        }
+            throw new ApiException(HttpStatusCode.NotFound, "LogId not found");
 
         var records = await CosmosFunctions.GetRecordsByTagId(logId);
 

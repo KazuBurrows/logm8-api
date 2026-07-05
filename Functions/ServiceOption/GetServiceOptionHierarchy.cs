@@ -1,7 +1,7 @@
+using LogMate.Application.Interfaces;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 public class GetServiceOptionHierarchy
@@ -15,31 +15,17 @@ public class GetServiceOptionHierarchy
 
     [Function("GetServiceOptionHierarchy")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req,
-        FunctionContext context
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req
     )
     {
-        var logger = context.GetLogger("GetServiceOptionHierarchy");
+        var result = await _service.GetServiceOptionHierarchyAsync();
 
-        try
-        {
-            var result = await _service.GetServiceOptionHierarchyAsync();
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+        await response.WriteStringAsync(
+            JsonConvert.SerializeObject(result, Formatting.Indented)
+        );
 
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-            await response.WriteStringAsync(
-                JsonConvert.SerializeObject(result, Formatting.Indented)
-            );
-
-            return response;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to get service record hierarchy");
-
-            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync("Failed to get service record hierarchy");
-            return response;
-        }
+        return response;
     }
 }

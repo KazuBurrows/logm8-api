@@ -1,58 +1,56 @@
+using LogMate.Application.Exceptions;
+using LogMate.Application.Interfaces;
+using LogMate.Domain.Models;
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 public class UpdateAssetNfcTagAsync
 {
     private readonly INfcTagService _service;
+    private readonly ILogger<UpdateAssetNfcTagAsync> _logger;
 
-    public UpdateAssetNfcTagAsync(INfcTagService service)
+    public UpdateAssetNfcTagAsync(INfcTagService service, ILogger<UpdateAssetNfcTagAsync> logger)
     {
         _service = service;
+        _logger = logger;
     }
 
     [Function("UpdateAssetNfcTagAsync")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req
+        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req
     )
     {
-        try
-        {
-            var body = await req.ReadAsStringAsync();
-            var request = JsonConvert.DeserializeObject<UpdateAssetNfcTagRequest>(body);
+        req.Headers.TryGetValues("Authorization", out var authValues);
+        req.Headers.TryGetValues("X-Tag-Id", out var tagIdValues);
+        string? authorization = authValues?.FirstOrDefault();
+        string? tagIdHeader = tagIdValues?.FirstOrDefault();
 
-            if (request == null)
+        _logger.LogInformation("Authorization: {Authorization}", authorization);
+        _logger.LogInformation("X-Tag-Id: {TagIdHeader}", tagIdHeader);
+
+        var body = await req.ReadAsStringAsync();
+        var request = JsonConvert.DeserializeObject<UpdateAssetNfcTagRequest>(body);
+
+        if (request == null)
+            throw new ApiException(HttpStatusCode.BadRequest, "Invalid request body");
+
+        var success = await _service.UpdateAssetNfcTagAsync(request);
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(
+            new
             {
-                var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-                await bad.WriteAsJsonAsync(
-                    new { success = false, message = "Invalid request body" }
-                );
-                return bad;
+                success,
+                message = success
+                    ? "Tag updated successfully"
+                    : "Tag not found or update failed",
             }
+        );
 
-            var success = await _service.UpdateAssetNfcTagAsync(request);
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(
-                new
-                {
-                    success,
-                    message = success
-                        ? "Tag updated successfully"
-                        : "Tag not found or update failed",
-                }
-            );
-
-            return response;
-        }
-        catch (Exception ex)
-        {
-            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteAsJsonAsync(new { success = false, message = ex.Message });
-
-            return response;
-        }
+        return response;
     }
 }

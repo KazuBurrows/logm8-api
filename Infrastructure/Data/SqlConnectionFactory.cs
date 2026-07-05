@@ -1,6 +1,8 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
+namespace LogMate.Infrastructure.Data;
+
 public class SqlConnectionFactory
 {
     private readonly string _connectionString;

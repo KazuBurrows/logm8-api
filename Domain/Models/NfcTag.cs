@@ -1,8 +1,4 @@
-public class ReplaceNfcTagRequest
-{
-    public string OldTagId { get; set; } = default!;
-    public string NewTagId { get; set; } = default!;
-}
+namespace LogMate.Domain.Models;
 
 public class Tag
 {
@@ -17,11 +13,16 @@ public class Tag
     public List<string> Fuel { get; set; }
     public string Transmission { get; set; }
     public string Color { get; set; }
-    public string? VinNumber { get; set; } // Nullable property
-    public string? LicencePlate { get; set; } // Nullable property
+    public string? VinNumber { get; set; }
+    public string? LicencePlate { get; set; }
     public bool IsConfigured { get; set; }
 }
 
+public class ReplaceNfcTagRequest
+{
+    public string OldTagId { get; set; } = default!;
+    public string NewTagId { get; set; } = default!;
+}
 
 public class UpdateAssetNfcTagRequest
 {

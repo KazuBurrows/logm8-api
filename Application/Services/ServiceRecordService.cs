@@ -1,4 +1,11 @@
+using System.Net;
+using LogMate.Application.Exceptions;
+using LogMate.Application.Interfaces;
+using LogMate.Domain.Models;
+using LogMate.Infrastructure.Data.Interfaces;
 using Microsoft.AspNetCore.Http;
+
+namespace LogMate.Application.Services;
 
 public class ServiceRecordService : IServiceRecordService
 {
@@ -14,7 +21,7 @@ public class ServiceRecordService : IServiceRecordService
         _nfcTagService = nfcTagService;
     }
 
-    public async Task<bool> AddServiceRecordAsync(
+    public async Task<Record> AddServiceRecordAsync(
         ServiceRecordRequest request,
         IReadOnlyList<string>? fileUrls = null
     )
@@ -27,7 +34,7 @@ public class ServiceRecordService : IServiceRecordService
         var tagId = await _nfcTagService.GetNfcTagIdByUriTokenAsync(request.Token);
 
         if (string.IsNullOrEmpty(tagId))
-            throw new InvalidOperationException("Invalid NFC token");
+            throw new ApiException(HttpStatusCode.BadRequest, "Invalid NFC token");
 
         var record = new Record
         {
@@ -48,73 +55,82 @@ public class ServiceRecordService : IServiceRecordService
         return await _repo.Add(record);
     }
 
-    public async Task<bool?> UpdateServiceRecordAsync(IFormCollection? record)
+    public Task<Record> Create(Record r)
     {
-        try
+        throw new NotImplementedException();
+    }
+
+    public Task<bool> Delete(int id)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<IEnumerable<Record>> GetAll()
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Record> GetById(int id)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Record> Update(Record r)
+    {
+        throw new NotImplementedException();
+    }
+
+
+    public async Task<Record> UpdateServiceRecordAsync(IFormCollection record)
+    {
+        string id = record["Id"];
+        if (string.IsNullOrEmpty(id))
+            throw new ApiException(HttpStatusCode.BadRequest, "Missing record Id");
+
+        string token = record["Token"];
+        string tagId = record["TagId"];
+        string enteredDate = record["EnteredDate"];
+        string servicedDate = record["ServicedDate"];
+        string mechanicName = record["MechanicName"];
+        string odometer = record["Odometer"];
+        string serviceCategory = record["serviceCategory"];
+        string serviceOption = record["serviceOption"];
+        string serviceType = record["ServiceType"];
+        string comment = record["Comment"];
+
+        List<IFormFile> newFiles = new();
+        foreach (var file in record.Files)
         {
-            // Read form fields
-            string id = record["Id"]; // Required for updates
-            if (string.IsNullOrEmpty(id))
-                return false;
-
-            string token = record["Token"];
-            string tagId = record["TagId"];
-            string enteredDate = record["EnteredDate"];
-            string servicedDate = record["ServicedDate"];
-            string mechanicName = record["MechanicName"];
-            string odometer = record["Odometer"];
-            string serviceCategory = record["serviceCategory"];
-            string serviceOption = record["serviceOption"];
-            string serviceType = record["ServiceType"];
-            string comment = record["Comment"];
-
-            // --- Process Files (optional) ---
-            List<IFormFile> newFiles = new();
-            foreach (var file in record.Files)
-            {
-                using var stream = file.OpenReadStream();
-                newFiles.Add(file);
-            }
-
-            List<string> newFileUrls = new();
-            foreach (var file in newFiles)
-            {
-                string fileUrl = await _repo.FileUploadAsync(file);
-                newFileUrls.Add(fileUrl);
-            }
-
-            // --- Fetch existing record from Cosmos ---
-            var existingRecord = await _repo.GetByIdAsync(id);
-            if (existingRecord is null)
-                return false;
-
-            // --- Merge updated values ---
-            // existingRecord.Token = token ?? existingRecord.Token;
-            // existingRecord.TagId = tagId ?? existingRecord.TagId;
-            existingRecord.EnteredDate = enteredDate ?? existingRecord.EnteredDate;
-            existingRecord.ServicedDate = servicedDate ?? existingRecord.ServicedDate;
-            existingRecord.MechanicName = mechanicName ?? existingRecord.MechanicName;
-            existingRecord.Odometer = odometer ?? existingRecord.Odometer;
-            existingRecord.ServiceCategory = serviceCategory ?? existingRecord.ServiceCategory;
-            existingRecord.ServiceType = serviceType ?? existingRecord.ServiceType;
-            existingRecord.ServiceOption = serviceOption ?? existingRecord.ServiceOption;
-            existingRecord.Comment = comment ?? existingRecord.Comment;
-
-            // Append new files to existing list if any
-            if (newFileUrls.Count > 0)
-            {
-                existingRecord.FileUrls ??= new List<string>();
-                existingRecord.FileUrls.AddRange(newFileUrls);
-            }
-
-            // --- Write back to Cosmos ---
-            var updated = await _repo.Update(id, existingRecord);
-
-            return true;
+            using var stream = file.OpenReadStream();
+            newFiles.Add(file);
         }
-        catch
+
+        List<string> newFileUrls = new();
+        foreach (var file in newFiles)
         {
-            return false;
+            string fileUrl = await _repo.FileUploadAsync(file);
+            newFileUrls.Add(fileUrl);
         }
+
+        var existingRecord = await _repo.GetByIdAsync(id, tagId);
+        if (existingRecord is null)
+            throw new ApiException(HttpStatusCode.NotFound, "Service record not found");
+
+        existingRecord.EnteredDate = enteredDate ?? existingRecord.EnteredDate;
+        existingRecord.ServicedDate = servicedDate ?? existingRecord.ServicedDate;
+        existingRecord.MechanicName = mechanicName ?? existingRecord.MechanicName;
+        existingRecord.Odometer = odometer ?? existingRecord.Odometer;
+        existingRecord.ServiceCategory = serviceCategory ?? existingRecord.ServiceCategory;
+        existingRecord.ServiceType = serviceType ?? existingRecord.ServiceType;
+        existingRecord.ServiceOption = serviceOption ?? existingRecord.ServiceOption;
+        existingRecord.Comment = comment ?? existingRecord.Comment;
+
+        if (newFileUrls.Count > 0)
+        {
+            existingRecord.FileUrls ??= new List<string>();
+            existingRecord.FileUrls.AddRange(newFileUrls);
+        }
+
+        return await _repo.Update(id, existingRecord);
     }
 }

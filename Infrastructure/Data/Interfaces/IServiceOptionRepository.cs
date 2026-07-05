@@ -1,3 +1,7 @@
+using LogMate.Domain.Models;
+
+namespace LogMate.Infrastructure.Data.Interfaces;
+
 public interface IServiceOptionRepository
 {
     Task<List<FlatServiceOption>> GetMotorbikeServiceOptions();
@@ -5,6 +9,4 @@ public interface IServiceOptionRepository
     Task<int> AddServiceOptionAsync(string name, string? description, int? categoryId);
     Task<int> AddParentServiceOptionAsync(int optionId, int parentId);
     Task<int> AddServiceOptionServiceTypeAsync(string optionId, string serviceTypeId);
-    // Task UpdateServiceOptionAsync(ServiceOption serviceOption);
-    // Task DeleteServiceOptionAsync(int id);
 }

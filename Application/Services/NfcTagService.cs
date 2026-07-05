@@ -1,4 +1,9 @@
 using System.Net;
+using LogMate.Application.Interfaces;
+using LogMate.Domain.Models;
+using LogMate.Infrastructure.Data.Interfaces;
+
+namespace LogMate.Application.Services;
 
 public class NfcTagService : INfcTagService
 {
@@ -21,7 +26,6 @@ public class NfcTagService : INfcTagService
             payload.NewTagId
         );
 
-        // If rowsAffected is returned, operation succeeded
         return rowsAffected > 0 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
     }
 
@@ -32,7 +36,6 @@ public class NfcTagService : INfcTagService
 
         try
         {
-            // Resolve real NFC TagId from URI token
             var actualTagId = await _repo.GetNfcTagIdByUriTokenAsync(request.TagId);
             if (string.IsNullOrWhiteSpace(actualTagId))
                 return false;
@@ -58,7 +61,6 @@ public class NfcTagService : INfcTagService
         }
         catch (Exception ex)
         {
-            // Prefer ILogger in real usage
             Console.WriteLine($"UpdateAssetNfcTagAsync failed: {ex}");
             return false;
         }

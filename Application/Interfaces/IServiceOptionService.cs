@@ -1,4 +1,7 @@
 using System.Net;
+using LogMate.Domain.Models;
+
+namespace LogMate.Application.Interfaces;
 
 public interface IServiceOptionService
 {
@@ -6,6 +9,5 @@ public interface IServiceOptionService
     Task<HttpStatusCode> AddServiceOptionAsync(AddServiceOptionRequest payload);
     Task<HttpStatusCode> AddParentServiceOptionAsync(AddParentOptionRequest payload);
     Task<HttpStatusCode> AddServiceOptionServiceTypeAsync(AddServiceTypeRequest payload);
-    // Task UpdateServiceOptionAsync(ServiceOption serviceOption);
-    // Task DeleteServiceOptionAsync(int id);
+    
 }

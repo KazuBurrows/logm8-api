@@ -1,11 +1,11 @@
+namespace LogMate.Domain.Models;
+
 public class ServiceOption
 {
     public int Id { get; set; }
     public string Name { get; set; }
     public string? Description { get; set; }
-
     public List<string> ServiceTypes { get; set; } = new();
-
     public List<ServiceOption> Children { get; set; } = new();
 }
 
@@ -14,9 +14,7 @@ public class FlatServiceOption
     public int Id { get; set; }
     public string Name { get; set; }
     public string? Description { get; set; }
-
     public int? ParentId { get; set; }
-
     public List<string> ServiceTypes { get; set; } = new();
 }
 
@@ -32,7 +30,6 @@ public class AddServiceOptionRequest
     public string Description { get; set; }
     public int CategoryId { get; set; }
 }
-
 
 public class AddParentOptionRequest
 {

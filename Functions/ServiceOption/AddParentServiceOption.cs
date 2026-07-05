@@ -1,3 +1,6 @@
+using LogMate.Application.Exceptions;
+using LogMate.Application.Interfaces;
+using LogMate.Domain.Models;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -22,24 +25,18 @@ public class AddParentServiceOption
         var payload = JsonConvert.DeserializeObject<AddParentOptionRequest>(body);
 
         if (payload == null || payload.OptionId <= 0 || payload.ParentId <= 0)
-        {
-            var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-            await bad.WriteStringAsync("Invalid payload");
-            return bad;
-        }
+            throw new ApiException(HttpStatusCode.BadRequest, "Invalid payload");
 
-        var response = _service.AddParentServiceOptionAsync(payload).Result switch
-        {
-            HttpStatusCode.OK => req.CreateResponse(HttpStatusCode.OK),
-            HttpStatusCode.Conflict => req.CreateResponse(HttpStatusCode.Conflict),
-            _ => req.CreateResponse(HttpStatusCode.InternalServerError),
-        };
+        var status = await _service.AddParentServiceOptionAsync(payload);
 
-        await response.WriteStringAsync(
-            response.StatusCode == HttpStatusCode.OK
-                ? "Parent option linked successfully"
-                : "Parent option already exists"
-        );
+        if (status == HttpStatusCode.Conflict)
+            throw new ApiException(HttpStatusCode.Conflict, "Parent option already exists");
+
+        if (status != HttpStatusCode.OK)
+            throw new ApiException(HttpStatusCode.InternalServerError, "Failed to link parent option");
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteStringAsync("Parent option linked successfully");
 
         return response;
     }

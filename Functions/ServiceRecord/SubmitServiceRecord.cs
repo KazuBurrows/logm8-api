@@ -1,5 +1,6 @@
+using LogMate.Application.Exceptions;
+using LogMate.Domain.Models;
 using System.Net;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using Company.Function;
 using Microsoft.AspNetCore.WebUtilities;
@@ -21,19 +22,23 @@ public class SubmitRecord
     public async Task<HttpResponseData> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req
     )
-    {
+    {            
+        req.Headers.TryGetValues("Authorization", out var authValues);
+        req.Headers.TryGetValues("X-Tag-Id", out var tagIdValues);
+        string? authorization = authValues?.FirstOrDefault();
+        string? tagIdHeader = tagIdValues?.FirstOrDefault();
+
+        _logger.LogInformation("Authorization: {Authorization}", authorization);
+        _logger.LogInformation("X-Tag-Id: {TagIdHeader}", tagIdHeader);
+
         if (!req.Headers.TryGetValues("Content-Type", out var values))
-        {
-            return req.CreateResponse(HttpStatusCode.BadRequest);
-        }
+            throw new ApiException(HttpStatusCode.BadRequest, "Missing Content-Type header");
 
         var contentType = MediaTypeHeaderValue.Parse(values.First());
         var boundary = HeaderUtilities.RemoveQuotes(contentType.Boundary).Value;
 
         if (string.IsNullOrEmpty(boundary))
-        {
-            return req.CreateResponse(HttpStatusCode.BadRequest);
-        }
+            throw new ApiException(HttpStatusCode.BadRequest, "Missing multipart boundary");
 
         var reader = new MultipartReader(boundary, req.Body);
 
@@ -64,7 +69,7 @@ public class SubmitRecord
         }
 
         // Map fields
-        var record = new Company.Function.Record
+        var record = new Record
         {
             Token = formFields.GetValueOrDefault("Token"),
             TagId = formFields.GetValueOrDefault("TagId"),
@@ -81,8 +86,25 @@ public class SubmitRecord
         };
 
         // Upload files
+        var allowedContentTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "image/heif",
+            "application/pdf",
+        };
+        var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif", ".pdf",
+        };
+
         foreach (var file in uploadedFiles)
         {
+            var ext = Path.GetExtension(file.FileName);
+            if (!allowedContentTypes.Contains(file.ContentType) || !allowedExtensions.Contains(ext))
+            {
+                _logger.LogWarning("Rejected file upload: {FileName} ({ContentType})", file.FileName, file.ContentType);
+                throw new ApiException(HttpStatusCode.UnsupportedMediaType, $"File type not allowed: {file.FileName}. Only images and PDFs are accepted.");
+            }
+
             _logger.LogInformation("Uploading file: {file}", file.FileName);
 
             string url = await BlobFunctions.UploadBlob(
@@ -104,9 +126,14 @@ public class SubmitRecord
         var result = await CosmosFunctions.InsertRecord(record);
 
         var response = req.CreateResponse(HttpStatusCode.OK);
-        response.Headers.Add("Content-Type", "application/json");
-
-        await response.WriteStringAsync(JsonSerializer.Serialize(result));
+        await response.WriteAsJsonAsync(
+            new
+            {
+                success = true,
+                message = "Service record updated successfully",
+                data = result,
+            }
+        );
 
         return response;
     }

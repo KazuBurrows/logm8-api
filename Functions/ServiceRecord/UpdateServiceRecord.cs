@@ -1,3 +1,6 @@
+using System.Net;
+using LogMate.Application.Exceptions;
+using LogMate.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -18,17 +21,12 @@ public class UpdateServiceRecord
     {
         var formData = await req.ReadFormAsync();
         if (formData == null)
-        {
-            return new BadRequestObjectResult("Invalid form data");
-        }
+            throw new ApiException(HttpStatusCode.BadRequest, "Invalid form data");
 
-        var result = await _service.UpdateServiceRecordAsync(formData);
+        var record = await _service.UpdateServiceRecordAsync(formData);
 
-        return result switch
-        {
-            true  => new OkObjectResult("Service record updated successfully"),
-            false => new BadRequestObjectResult("Bad request data"),
-            null  => new NotFoundObjectResult("Service record not found"),
-        };
+        return new OkObjectResult(
+            new { success = true, message = "Service record updated successfully", data = record }
+        );
     }
 }

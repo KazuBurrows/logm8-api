@@ -1,3 +1,6 @@
+using LogMate.Application.Exceptions;
+using LogMate.Application.Interfaces;
+using LogMate.Domain.Models;
 using System.IO;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
@@ -18,65 +21,41 @@ public class AddServiceRecord
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req
     )
     {
-        try
+        var body = await new StreamReader(req.Body).ReadToEndAsync();
+
+        if (string.IsNullOrWhiteSpace(body))
+            throw new ApiException(HttpStatusCode.BadRequest, "Request body is empty");
+
+        var request = JsonConvert.DeserializeObject<AddServiceRecordRequest>(body);
+
+        if (request == null)
+            throw new ApiException(HttpStatusCode.BadRequest, "Invalid JSON payload");
+
+        var serviceRequest = new ServiceRecordRequest
         {
-            var body = await new StreamReader(req.Body).ReadToEndAsync();
+            Token = request.Token,
+            EnteredDate = request.EnteredDate,
+            ServicedDate = request.ServicedDate,
+            MechanicName = request.MechanicName,
+            Odometer = request.Odometer,
+            ServiceCategory = request.ServiceCategory,
+            ServiceType = request.ServiceType,
+            ServiceOption = request.ServiceOption,
+            Comment = request.Comment
+        };
 
-            if (string.IsNullOrWhiteSpace(body))
+        var record = await _service.AddServiceRecordAsync(serviceRequest);
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(
+            new
             {
-                var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-                await bad.WriteAsJsonAsync(
-                    new { success = false, message = "Request body is empty" }
-                );
-                return bad;
+                success = true,
+                message = "Service record added successfully",
+                data = record,
             }
+        );
 
-            var request = JsonConvert.DeserializeObject<AddServiceRecordRequest>(body);
-
-            if (request == null)
-            {
-                var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-                await bad.WriteAsJsonAsync(
-                    new { success = false, message = "Invalid JSON payload" }
-                );
-                return bad;
-            }
-
-            var serviceRequest = new ServiceRecordRequest
-            {
-                Token = request.Token,
-                EnteredDate = request.EnteredDate,
-                ServicedDate = request.ServicedDate,
-                MechanicName = request.MechanicName,
-                Odometer = request.Odometer,
-                ServiceCategory = request.ServiceCategory,
-                ServiceType = request.ServiceType,
-                ServiceOption = request.ServiceOption,
-                Comment = request.Comment
-            };
-
-            var success = await _service.AddServiceRecordAsync(serviceRequest);
-
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(
-                new
-                {
-                    success,
-                    message = success
-                        ? "Service record added successfully"
-                        : "Failed to add service record",
-                }
-            );
-
-            return response;
-        }
-        catch (Exception ex)
-        {
-            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteAsJsonAsync(new { success = false, message = ex.Message });
-            return response;
-        }
+        return response;
     }
-
 }

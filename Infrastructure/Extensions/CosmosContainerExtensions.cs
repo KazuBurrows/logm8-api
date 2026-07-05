@@ -1,3 +1,7 @@
+using LogMate.Domain.Enums;
+
+namespace LogMate.Infrastructure.Extensions;
+
 public static class CosmosContainerExtensions
 {
     public static string GetName(this CosmosContainer container) =>
@@ -5,7 +9,6 @@ public static class CosmosContainerExtensions
         {
             CosmosContainer.Records => "records",
             CosmosContainer.Tags => "tags",
-            // CosmosContainer.ServiceOptions => "service-options",
             _ => throw new ArgumentOutOfRangeException(nameof(container))
         };
 }

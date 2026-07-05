@@ -1,4 +1,7 @@
 using System.Net;
+using LogMate.Domain.Models;
+
+namespace LogMate.Application.Interfaces;
 
 public interface INfcTagService
 {

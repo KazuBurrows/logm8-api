@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http;
 
+namespace LogMate.Domain.Models;
+
 public class Record
 {
     public string Token { get; set; }
@@ -43,7 +45,6 @@ public class ServiceRecordRequest
             Comment = form["Comment"],
         };
 }
-
 
 public class AddServiceRecordRequest
 {

@@ -1,3 +1,7 @@
+using LogMate.Application.Exceptions;
+using LogMate.Application.Interfaces;
+using LogMate.Domain.Models;
+using LogMate.Infrastructure.Extensions;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -22,24 +26,18 @@ public class AddServiceOption
         var payload = JsonConvert.DeserializeObject<AddServiceOptionRequest>(body);
 
         if (payload.Name.IsNullOrEmpty())
-        {
-            var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-            await bad.WriteStringAsync("Invalid payload");
-            return bad;
-        }
+            throw new ApiException(HttpStatusCode.BadRequest, "Invalid payload");
 
-        var response = _service.AddServiceOptionAsync(payload).Result switch
-        {
-            HttpStatusCode.OK => req.CreateResponse(HttpStatusCode.OK),
-            HttpStatusCode.Conflict => req.CreateResponse(HttpStatusCode.Conflict),
-            _ => req.CreateResponse(HttpStatusCode.InternalServerError),
-        };
+        var status = await _service.AddServiceOptionAsync(payload);
 
-        await response.WriteStringAsync(
-            response.StatusCode == HttpStatusCode.OK
-                ? "Service option created successfully"
-                : "Service option name already exists"
-        );
+        if (status == HttpStatusCode.Conflict)
+            throw new ApiException(HttpStatusCode.Conflict, "Service option name already exists");
+
+        if (status != HttpStatusCode.OK)
+            throw new ApiException(HttpStatusCode.InternalServerError, "Failed to create service option");
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteStringAsync("Service option created successfully");
 
         return response;
     }

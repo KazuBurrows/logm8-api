@@ -1,4 +1,9 @@
 using System.Net;
+using LogMate.Application.Interfaces;
+using LogMate.Domain.Models;
+using LogMate.Infrastructure.Data.Interfaces;
+
+namespace LogMate.Application.Services;
 
 public class ServiceOptionService : IServiceOptionService
 {
@@ -26,14 +31,12 @@ public class ServiceOptionService : IServiceOptionService
         if (string.IsNullOrWhiteSpace(payload.Name))
             return HttpStatusCode.BadRequest;
 
-        // Call repository to insert or get existing ServiceOption ID
         int serviceOptionId = await _repo.AddServiceOptionAsync(
             payload.Name.Trim(),
             payload.Description,
             payload.CategoryId
         );
 
-        // If ID is returned, operation succeeded
         return serviceOptionId > 0 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
     }
 
@@ -42,13 +45,11 @@ public class ServiceOptionService : IServiceOptionService
         if (string.IsNullOrWhiteSpace(payload.OptionId.ToString()) || string.IsNullOrWhiteSpace(payload.ParentId.ToString()))
             return HttpStatusCode.BadRequest;
 
-        // Call repository to insert or get existing ServiceOption ID
         int rowsAffected = await _repo.AddParentServiceOptionAsync(
             payload.OptionId,
             payload.ParentId
         );
 
-        // If rowsAffected is returned, operation succeeded
         return rowsAffected > 0 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
     }
 
@@ -57,19 +58,14 @@ public class ServiceOptionService : IServiceOptionService
         if (string.IsNullOrWhiteSpace(payload.OptionId.ToString()) || string.IsNullOrWhiteSpace(payload.ServiceTypeId.ToString()))
             return HttpStatusCode.BadRequest;
 
-        // Call repository to insert or get existing ServiceOption ID
         int rowsAffected = await _repo.AddServiceOptionServiceTypeAsync(
             payload.OptionId,
             payload.ServiceTypeId
         );
 
-        // If rowsAffected is returned, operation succeeded
         return rowsAffected > 0 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
     }
 
-
-
-    /** * Helper Methods **/
     private static List<ServiceOption> BuildHierarchy(List<FlatServiceOption> flatList)
     {
         var dict = flatList
@@ -95,6 +91,4 @@ public class ServiceOptionService : IServiceOptionService
             .Values.Where(x => !flatList.Any(f => f.Id == x.Id && f.ParentId.HasValue))
             .ToList();
     }
-
-    
 }

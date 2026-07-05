@@ -1,3 +1,6 @@
+using LogMate.Application.Exceptions;
+using LogMate.Application.Interfaces;
+using LogMate.Domain.Models;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -22,24 +25,18 @@ public class AddServiceOptionServiceType
         var payload = JsonConvert.DeserializeObject<AddServiceTypeRequest>(body);
 
         if (payload == null || string.IsNullOrEmpty(payload.OptionId))
-        {
-            var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-            await bad.WriteStringAsync("Invalid payload");
-            return bad;
-        }
+            throw new ApiException(HttpStatusCode.BadRequest, "Invalid payload");
 
-        var response = _service.AddServiceOptionServiceTypeAsync(payload).Result switch
-        {
-            HttpStatusCode.OK => req.CreateResponse(HttpStatusCode.OK),
-            HttpStatusCode.Conflict => req.CreateResponse(HttpStatusCode.Conflict),
-            _ => req.CreateResponse(HttpStatusCode.InternalServerError),
-        };
+        var status = await _service.AddServiceOptionServiceTypeAsync(payload);
 
-        await response.WriteStringAsync(
-            response.StatusCode == HttpStatusCode.OK
-                ? "Service type linked successfully"
-                : "Service type already exists"
-        );
+        if (status == HttpStatusCode.Conflict)
+            throw new ApiException(HttpStatusCode.Conflict, "Service type already exists");
+
+        if (status != HttpStatusCode.OK)
+            throw new ApiException(HttpStatusCode.InternalServerError, "Failed to link service type");
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteStringAsync("Service type linked successfully");
 
         return response;
     }
