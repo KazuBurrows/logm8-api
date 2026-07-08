@@ -1,6 +1,7 @@
 using System.Data;
 using System.Text.Json.Nodes;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 
 namespace Company.Function
 {
@@ -64,7 +65,7 @@ namespace Company.Function
             }
         }
 
-        public static async Task<string> IsOneLifeUrlExpired(string tokenKey)
+        public static async Task<string> IsOneLifeUrlExpired(string tokenKey, ILogger? logger = null)
         {
             var log = new JsonObject
             {
@@ -111,8 +112,14 @@ namespace Company.Function
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                logger?.LogError(
+                    ex,
+                    "IsOneLifeUrlExpired failed for token {TokenKey}",
+                    tokenKey
+                );
+
                 var errorLog = new JsonObject
                 {
                     ["LogId"] = "Not Found",
@@ -169,6 +176,37 @@ namespace Company.Function
             }
 
             return log.ToString();
+        }
+
+        public static async Task CleanOneLifeUrls()
+        {
+            string deleteQuery =
+            @"
+            DELETE FROM [dbo].[onelifes]
+            WHERE [TTL] < DATEADD(MINUTE, -720, GETUTCDATE()) AND IsConsumed = 1;
+            ";
+
+            try
+            {
+                using (
+                    SqlConnection connection = new SqlConnection(
+                        Environment.GetEnvironmentVariable("SqlConnectionString")
+                    )
+                )
+                {
+                    await connection.OpenAsync();
+
+                    using (SqlCommand command = new SqlCommand(deleteQuery, connection))
+                    {
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Handle exception if needed
+                throw;
+            }
         }
 
         public static async Task<bool> CommitOneLifeUrlComsumed(string tokenKey)

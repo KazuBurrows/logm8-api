@@ -41,7 +41,7 @@ public class GetLogData
 
         _logger.LogInformation("Processing token: {Token}", tokenKey);
 
-        string str_log = await SqlFunctions.IsOneLifeUrlExpired(tokenKey);
+        string str_log = await SqlFunctions.IsOneLifeUrlExpired(tokenKey, _logger);
 
         if (string.IsNullOrEmpty(str_log))
         {
