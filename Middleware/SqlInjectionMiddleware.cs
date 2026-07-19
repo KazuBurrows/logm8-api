@@ -8,6 +8,17 @@ namespace LogMate.Middleware;
 
 public class SqlInjectionMiddleware : IFunctionsWorkerMiddleware
 {
+    // Encrypted params (eId, accessToken, tokens, GUIDs, ...) are long unbroken
+    // runs of base64/base64url characters and can coincidentally contain byte
+    // sequences that look like SQL syntax (e.g. "0x1234"). Real injection syntax
+    // needs spaces/quotes/semicolons to do anything, which can't survive inside
+    // a run this long, so stripping long runs before matching kills false
+    // positives on ciphertext without weakening detection of real payloads.
+    private static readonly Regex TokenLikeRun = new(
+        @"[A-Za-z0-9+/_=-]{16,}",
+        RegexOptions.Compiled
+    );
+
     // Targets attack patterns rather than individual keywords to minimise false positives.
     // Parameterised queries remain the primary defence; this is an additional layer.
     private static readonly Regex SqlPattern = new(
@@ -70,7 +81,7 @@ public class SqlInjectionMiddleware : IFunctionsWorkerMiddleware
     }
 
     private static bool IsSuspicious(string input) =>
-        !string.IsNullOrEmpty(input) && SqlPattern.IsMatch(input);
+        !string.IsNullOrEmpty(input) && SqlPattern.IsMatch(TokenLikeRun.Replace(input, string.Empty));
 
     private static async Task RejectAsync(FunctionContext context, HttpRequestData req)
     {

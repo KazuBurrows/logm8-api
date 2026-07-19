@@ -77,12 +77,17 @@ namespace Company.Function
             string eId = reversedJson["eId"]?.ToString();
             string userId = reversedJson["userId"]?.ToString();
 
+            _logger.LogInformation("userId: " + userId);
+
             var result = DecryptString(eId);
 
             _logger.LogInformation("eId: " + result.decryptedText);
             string id = result.decryptedText.Replace(" ", "+");
+            _logger.LogInformation("id: " + id);
 
             int isConfigured = await CosmosFunctions.IsTagConfigured(id);
+            _logger.LogInformation("isConfigured: " + isConfigured);
+
             if (isConfigured == 1)
             {
                 string tokenUrl = await SqlFunctions.GenerateOneLifeUrlAsync(id, (int)UserMode.Service, userId);
@@ -110,8 +115,10 @@ namespace Company.Function
 
             _logger.LogInformation("eId: " + result.decryptedText);
             string id = result.decryptedText.Replace(" ", "+");
+            _logger.LogInformation("id: " + id);
 
             string tokenUrl = await SqlFunctions.GenerateOneLifeUrlAsync(id, (int)UserMode.Guest, null);
+            _logger.LogInformation("tokenUrl: " + tokenUrl);
             return new OkObjectResult($"{BaseLogm8Url}/log?token=" + tokenUrl);
         }
 

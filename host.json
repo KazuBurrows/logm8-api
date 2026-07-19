@@ -4,9 +4,14 @@
         "applicationInsights": {
             "samplingSettings": {
                 "isEnabled": true,
-                "excludedTypes": "Request"
+                "excludedTypes": "Trace"
             },
             "enableLiveMetricsFilters": true
+        },
+        "logLevel": {
+            "default": "Information",
+            "Function": "Information",
+            "Function.YourFunctionName.User": "Information"
         }
     }
 }
