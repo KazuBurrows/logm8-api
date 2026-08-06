@@ -1,5 +1,6 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
+using LogMate.Common.Http;
 using LogMate.Domain.Models;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
@@ -29,20 +30,14 @@ public class ReplaceAssetNfcTag
             || string.IsNullOrEmpty(payload.NewTagId)
         )
         {
-            throw new ApiException(HttpStatusCode.BadRequest, "Invalid request payload");
+            throw new BadRequestException("Invalid request payload");
         }
 
-        var status = await _service.ReplaceAssetNfcTagAsync(payload);
+        var (status, migratedCount) = await _service.ReplaceAssetNfcTagAsync(payload);
 
-        if (status == HttpStatusCode.Conflict)
-            throw new ApiException(HttpStatusCode.Conflict, "Service type already exists");
+        if (status == HttpStatusCode.NotFound)
+            throw new NotFoundException($"No records found for tag {payload.OldTagId}.");
 
-        if (status != HttpStatusCode.OK)
-            throw new ApiException(HttpStatusCode.InternalServerError, "Failed to link service type");
-
-        var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteStringAsync("Service type linked successfully");
-
-        return response;
+        return await ApiResponseFactory.Ok(req, $"Successfully migrated {migratedCount} record(s).");
     }
 }

@@ -1,4 +1,7 @@
+using LogMate.Application.Exceptions;
+using LogMate.Common.Http;
 using LogMate.Domain.Models;
+using System.Net;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -54,11 +57,16 @@ namespace Company.Function
             bool status = await CosmosFunctions.UpdateTag(tag);
             _logger.LogInformation("status: " + status);
 
-            return new OkObjectResult(new
-            {
-                success = status,
-                message = status ? "Successful Tag Insert" : "Failed to insert tag",
-            });
+            if (!status)
+                throw new NotFoundException("Tag not found or could not be updated.");
+
+            var body = ApiResponseFactory.Build(
+                HttpStatusCode.OK,
+                "Successfully Updated",
+                "Tag inserted successfully."
+            );
+
+            return new ObjectResult(body) { StatusCode = (int)HttpStatusCode.OK };
         }
 
         [Function("UpdateTag")]

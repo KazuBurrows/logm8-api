@@ -1,8 +1,8 @@
 using LogMate.Application.Interfaces;
+using LogMate.Common.Http;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Newtonsoft.Json;
 
 public class GetServiceOptionHierarchy
 {
@@ -20,12 +20,14 @@ public class GetServiceOptionHierarchy
     {
         var result = await _service.GetServiceOptionHierarchyAsync();
 
-        var response = req.CreateResponse(HttpStatusCode.OK);
-        response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-        await response.WriteStringAsync(
-            JsonConvert.SerializeObject(result, Formatting.Indented)
+        return await ApiResponseFactory.Ok(
+            req,
+            "Service option hierarchy retrieved successfully.",
+            new Dictionary<string, object>
+            {
+                { "MotorbikeOptions", result.MotorbikeOptions },
+                { "OwnershipOptions", result.OwnershipOptions },
+            }
         );
-
-        return response;
     }
 }

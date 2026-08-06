@@ -1,18 +1,25 @@
 using LogMate.Domain.Models;
 using System.Data;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 
 namespace Company.Function
 {
     public partial class SqlFunctions
     {
-        public static async Task<ServiceHierarchy> GetHierarchy()
+        public static async Task<ServiceHierarchy> GetHierarchy(ILogger? logger = null)
         {
             string? connString =
                 Environment.GetEnvironmentVariable("SqlConnectionString");
 
+            var stopwatch = logger != null ? System.Diagnostics.Stopwatch.StartNew() : null;
+
             using var conn = new SqlConnection(connString);
             await conn.OpenAsync();
+            logger?.LogInformation(
+                "GetHierarchy SQL connection opened in {Elapsed}ms",
+                stopwatch?.ElapsedMilliseconds
+            );
 
             var motorbikeSql =
                 @"
@@ -42,6 +49,10 @@ namespace Company.Function
                     ";
 
             var motorbikeFlat = await QueryFlatOptions(conn, motorbikeSql);
+            logger?.LogInformation(
+                "GetHierarchy motorbike query completed, {Count} rows, {Elapsed}ms total",
+                motorbikeFlat.Count, stopwatch?.ElapsedMilliseconds
+            );
 
             var ownershipSql =
                 @"
@@ -58,6 +69,10 @@ namespace Company.Function
                     ";
 
             var ownershipFlat = await QueryFlatOptions(conn, ownershipSql);
+            logger?.LogInformation(
+                "GetHierarchy ownership query completed, {Count} rows, {Elapsed}ms total",
+                ownershipFlat.Count, stopwatch?.ElapsedMilliseconds
+            );
 
             return new ServiceHierarchy
             {

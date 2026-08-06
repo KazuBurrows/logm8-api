@@ -26,18 +26,22 @@ public class ServiceOptionService : IServiceOptionService
         };
     }
 
-    public async Task<HttpStatusCode> AddServiceOptionAsync(AddServiceOptionRequest payload)
+    public async Task<(HttpStatusCode Status, int Id)> AddServiceOptionAsync(AddServiceOptionRequest payload)
     {
         if (string.IsNullOrWhiteSpace(payload.Name))
-            return HttpStatusCode.BadRequest;
+            return (HttpStatusCode.BadRequest, 0);
 
-        int serviceOptionId = await _repo.AddServiceOptionAsync(
+        var (serviceOptionId, alreadyExisted) = await _repo.AddServiceOptionAsync(
             payload.Name.Trim(),
             payload.Description,
             payload.CategoryId
         );
 
-        return serviceOptionId > 0 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
+        if (alreadyExisted)
+            return (HttpStatusCode.Conflict, serviceOptionId);
+
+        var status = serviceOptionId > 0 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
+        return (status, serviceOptionId);
     }
 
     public async Task<HttpStatusCode> AddParentServiceOptionAsync(AddParentOptionRequest payload)
@@ -50,7 +54,7 @@ public class ServiceOptionService : IServiceOptionService
             payload.ParentId
         );
 
-        return rowsAffected > 0 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
+        return rowsAffected > 0 ? HttpStatusCode.OK : HttpStatusCode.Conflict;
     }
 
     public async Task<HttpStatusCode> AddServiceOptionServiceTypeAsync(AddServiceTypeRequest payload)
@@ -63,7 +67,7 @@ public class ServiceOptionService : IServiceOptionService
             payload.ServiceTypeId
         );
 
-        return rowsAffected > 0 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
+        return rowsAffected > 0 ? HttpStatusCode.OK : HttpStatusCode.Conflict;
     }
 
     private static List<ServiceOption> BuildHierarchy(List<FlatServiceOption> flatList)

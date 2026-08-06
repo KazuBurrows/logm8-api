@@ -1,5 +1,7 @@
 using System.Data;
+using System.Net;
 using System.Text.Json.Nodes;
+using LogMate.Application.Exceptions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
@@ -7,6 +9,27 @@ namespace Company.Function
 {
     public partial class SqlFunctions
     {
+        public static async Task<(string LogId, int? Mode)> EnsureOneLifeTokenNotExpiredAsync(
+            string tokenKey,
+            ILogger? logger = null
+        )
+        {
+            string str_log = await IsOneLifeUrlExpired(tokenKey, logger);
+            var log = JsonNode.Parse(str_log)?.AsObject();
+
+            string? logId = log?["LogId"]?.GetValue<string>();
+            DateTime? ttl = log?["TTL"]?.GetValue<DateTime?>();
+
+            if (string.IsNullOrEmpty(logId) || logId == "Not Found" || !ttl.HasValue || ttl.Value < DateTime.UtcNow)
+            {
+                logger?.LogWarning("Invalid or expired OneLife token {TokenKey}", tokenKey);
+                throw new ApiException(HttpStatusCode.NotFound, "Invalid or expired token.");
+            }
+
+            int? mode = log?["Mode"]?.GetValue<int?>();
+            return (logId, mode);
+        }
+
         public static async Task<string> GenerateOneLifeUrlAsync(
             string logId,
             int mode,
@@ -14,6 +37,7 @@ namespace Company.Function
         )
         {
             var token = Guid.NewGuid().ToString();
+            var ttl = DateTime.UtcNow.AddMinutes(30);
 
             string connectionString =
                 Environment.GetEnvironmentVariable("SqlConnectionString");
@@ -38,10 +62,7 @@ namespace Company.Function
                             new SqlParameter("@TokenKey", SqlDbType.VarChar) { Value = token }
                         );
                         command.Parameters.Add(
-                            new SqlParameter("@TTL", SqlDbType.DateTime)
-                            {
-                                Value = DateTime.UtcNow.AddMinutes(30),
-                            }
+                            new SqlParameter("@TTL", SqlDbType.DateTime) { Value = ttl }
                         );
                         command.Parameters.Add(
                             new SqlParameter("@Mode", SqlDbType.Int) { Value = mode }
@@ -77,6 +98,8 @@ namespace Company.Function
             string query =
                 "SELECT TOP 1 [LogId], [TTL], [Mode] FROM [dbo].[onelifes] WHERE [TokenKey] = @TokenKey";
 
+            var stopwatch = logger != null ? System.Diagnostics.Stopwatch.StartNew() : null;
+
             try
             {
                 using (
@@ -86,6 +109,10 @@ namespace Company.Function
                 )
                 {
                     await connection.OpenAsync();
+                    logger?.LogInformation(
+                        "IsOneLifeUrlExpired SQL connection opened for {TokenKey} in {Elapsed}ms",
+                        tokenKey, stopwatch?.ElapsedMilliseconds
+                    );
 
                     using (SqlCommand command = new SqlCommand(query, connection))
                     {
@@ -95,16 +122,25 @@ namespace Company.Function
                         {
                             if (await reader.ReadAsync())
                             {
+                                string recordLogId = reader.GetString(reader.GetOrdinal("LogId"));
+                                DateTime? recordTtl = reader.IsDBNull(reader.GetOrdinal("TTL"))
+                                    ? null
+                                    : reader.GetDateTime(reader.GetOrdinal("TTL"));
+                                int? recordMode = reader.IsDBNull(reader.GetOrdinal("Mode"))
+                                    ? null
+                                    : reader.GetInt32(reader.GetOrdinal("Mode"));
+
                                 var record = new JsonObject
                                 {
-                                    ["LogId"] = reader.GetString(reader.GetOrdinal("LogId")),
-                                    ["TTL"] = reader.IsDBNull(reader.GetOrdinal("TTL"))
-                                        ? null
-                                        : reader.GetDateTime(reader.GetOrdinal("TTL")),
-                                    ["Mode"] = reader.IsDBNull(reader.GetOrdinal("Mode"))
-                                        ? null
-                                        : reader.GetInt32(reader.GetOrdinal("Mode")),
+                                    ["LogId"] = recordLogId,
+                                    ["TTL"] = recordTtl,
+                                    ["Mode"] = recordMode,
                                 };
+
+                                logger?.LogInformation(
+                                    "IsOneLifeUrlExpired SQL query for {TokenKey} completed in {Elapsed}ms total",
+                                    tokenKey, stopwatch?.ElapsedMilliseconds
+                                );
 
                                 return record.ToString();
                             }
@@ -116,8 +152,8 @@ namespace Company.Function
             {
                 logger?.LogError(
                     ex,
-                    "IsOneLifeUrlExpired failed for token {TokenKey}",
-                    tokenKey
+                    "IsOneLifeUrlExpired failed for token {TokenKey} after {Elapsed}ms",
+                    tokenKey, stopwatch?.ElapsedMilliseconds
                 );
 
                 var errorLog = new JsonObject
@@ -129,6 +165,10 @@ namespace Company.Function
                 return errorLog.ToString();
             }
 
+            logger?.LogInformation(
+                "IsOneLifeUrlExpired SQL query for {TokenKey} found no record in {Elapsed}ms",
+                tokenKey, stopwatch?.ElapsedMilliseconds
+            );
             return log.ToString();
         }
 

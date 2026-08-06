@@ -11,14 +11,14 @@ public class CosmosKeepAlive
         _logger = logger;
     }
 
-    [Function("CosmosKeepAlive")]
-    public async Task Run([TimerTrigger("0 */5 * * * *")] TimerInfo timer)
-    {
-        _logger.LogInformation("CosmosKeepAlive ping starting.");
+    // [Function("CosmosKeepAlive")]
+    // public async Task Run([TimerTrigger("0 */5 * * * *")] TimerInfo timer)
+    // {
+    //     _logger.LogInformation("CosmosKeepAlive ping starting.");
 
-        await CosmosFunctions.GetTagInfo("__warmup__", _logger);
-        await CosmosFunctions.GetRecordsByTagId("__warmup__", _logger);
+    //     await CosmosFunctions.GetTagInfo("__warmup__", _logger);
+    //     await CosmosFunctions.GetRecordsByTagId("__warmup__", _logger);
 
-        _logger.LogInformation("CosmosKeepAlive ping completed.");
-    }
+    //     _logger.LogInformation("CosmosKeepAlive ping completed.");
+    // }
 }

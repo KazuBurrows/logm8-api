@@ -1,5 +1,6 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
+using LogMate.Common.Http;
 using LogMate.Domain.Models;
 using System.Net;
 using Microsoft.AspNetCore.Http;
@@ -36,21 +37,13 @@ public class UpdateAssetNfcTagAsync
         var request = JsonConvert.DeserializeObject<UpdateAssetNfcTagRequest>(body);
 
         if (request == null)
-            throw new ApiException(HttpStatusCode.BadRequest, "Invalid request body");
+            throw new BadRequestException("Invalid request body");
 
         var success = await _service.UpdateAssetNfcTagAsync(request);
 
-        var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteAsJsonAsync(
-            new
-            {
-                success,
-                message = success
-                    ? "Tag updated successfully"
-                    : "Tag not found or update failed",
-            }
-        );
+        if (!success)
+            throw new NotFoundException("Tag not found or update failed.");
 
-        return response;
+        return await ApiResponseFactory.Ok(req, "Tag updated successfully.");
     }
 }

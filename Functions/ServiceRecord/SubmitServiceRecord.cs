@@ -1,7 +1,7 @@
 using LogMate.Application.Exceptions;
+using LogMate.Common.Http;
 using LogMate.Domain.Models;
 using System.Net;
-using System.Text.Json.Nodes;
 using Company.Function;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.Functions.Worker;
@@ -32,13 +32,13 @@ public class SubmitRecord
         _logger.LogInformation("X-Tag-Id: {TagIdHeader}", tagIdHeader);
 
         if (!req.Headers.TryGetValues("Content-Type", out var values))
-            throw new ApiException(HttpStatusCode.BadRequest, "Missing Content-Type header");
+            throw new BadRequestException("Missing Content-Type header");
 
         var contentType = MediaTypeHeaderValue.Parse(values.First());
         var boundary = HeaderUtilities.RemoveQuotes(contentType.Boundary).Value;
 
         if (string.IsNullOrEmpty(boundary))
-            throw new ApiException(HttpStatusCode.BadRequest, "Missing multipart boundary");
+            throw new BadRequestException("Missing multipart boundary");
 
         var reader = new MultipartReader(boundary, req.Body);
 
@@ -102,7 +102,7 @@ public class SubmitRecord
             if (!allowedContentTypes.Contains(file.ContentType) || !allowedExtensions.Contains(ext))
             {
                 _logger.LogWarning("Rejected file upload: {FileName} ({ContentType})", file.FileName, file.ContentType);
-                throw new ApiException(HttpStatusCode.UnsupportedMediaType, $"File type not allowed: {file.FileName}. Only images and PDFs are accepted.");
+                throw new UnsupportedMediaTypeException($"File type not allowed: {file.FileName}. Only images and PDFs are accepted.");
             }
 
             _logger.LogInformation("Uploading file: {file}", file.FileName);
@@ -116,25 +116,14 @@ public class SubmitRecord
             record.FileUrls.Add(url);
         }
 
-        // Consume token
-        string str_log = await SqlFunctions.IsOneLifeUrlConsumed(record.Token);
-        var log = JsonNode.Parse(str_log)?.AsObject();
+        // Reject expired one-life tokens before writing anything
+        var (logId, _) = await SqlFunctions.EnsureOneLifeTokenNotExpiredAsync(record.Token, _logger);
 
-        record.TagId = log?["LogId"]?.ToString();
+        record.TagId = logId;
         record.id = Guid.NewGuid().ToString();
 
         var result = await CosmosFunctions.InsertRecord(record);
 
-        var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteAsJsonAsync(
-            new
-            {
-                success = true,
-                message = "Service record updated successfully",
-                data = result,
-            }
-        );
-
-        return response;
+        return await ApiResponseFactory.Success(req, "Service record", result, ActionType.Created);
     }
 }

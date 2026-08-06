@@ -15,7 +15,7 @@ namespace Company.Function
         }
 
         private readonly ILogger<LogMateFunction> _logger;
-        private readonly string BaseLogm8Url = "https://logm8.com";
+        private readonly string BaseLogm8Url = "https://app.logm8.com";
         private readonly string key = Environment.GetEnvironmentVariable("AES_KEY")!;
         private readonly string pepper = Environment.GetEnvironmentVariable("HASH_PEPPER")!;
 

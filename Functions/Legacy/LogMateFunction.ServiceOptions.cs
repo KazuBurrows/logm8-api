@@ -267,7 +267,7 @@ namespace Company.Function
 
             try
             {
-                var result = await SqlFunctions.GetHierarchy();
+                var result = await SqlFunctions.GetHierarchy(logger);
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
                 response.Headers.Add("Content-Type", "application/json; charset=utf-8");

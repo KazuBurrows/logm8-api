@@ -1,4 +1,5 @@
 using LogMate.Application.Exceptions;
+using LogMate.Common.Http;
 using LogMate.Domain.Models;
 using System.Net;
 using System.Text.Json.Nodes;
@@ -36,7 +37,7 @@ public class GetLogData
         if (string.IsNullOrEmpty(tokenKey))
         {
             _logger.LogWarning("Token is missing from request.");
-            throw new ApiException(HttpStatusCode.BadRequest, "Missing token.");
+            throw new BadRequestException("Missing token.");
         }
 
         _logger.LogInformation("Processing token: {Token}", tokenKey);
@@ -46,7 +47,7 @@ public class GetLogData
         if (string.IsNullOrEmpty(str_log))
         {
             _logger.LogWarning("SQL returned null/empty for token: {Token}", tokenKey);
-            throw new ApiException(HttpStatusCode.NotFound, "Not found.");
+            throw new NotFoundException("Not found.");
         }
 
         var log = JsonNode.Parse(str_log)?.AsObject();
@@ -59,7 +60,7 @@ public class GetLogData
         if (logId == "Not Found" || !ttl.HasValue || ttl.Value < DateTime.UtcNow)
         {
             _logger.LogWarning("Invalid or expired token. LogId: {LogId}, TTL: {TTL}", logId, ttl);
-            throw new ApiException(HttpStatusCode.NotFound, "Not found.");
+            throw new NotFoundException("Not found.");
         }
 
         _logger.LogInformation("Fetching Cosmos data for LogId: {LogId}", logId);
@@ -74,17 +75,17 @@ public class GetLogData
 
         _logger.LogInformation("Fetched {RecordCount} records for LogId: {LogId}", list_records?.Count ?? 0, logId);
 
-        var response = req.CreateResponse(HttpStatusCode.OK);
-
-        await response.WriteAsJsonAsync(new
-        {
-            tag = local_tag,
-            records = list_records,
-            mode = view_mode
-        });
-
         _logger.LogInformation("Response successfully returned for LogId: {LogId}", logId);
 
-        return response;
+        return await ApiResponseFactory.Ok(
+            req,
+            "Log data retrieved successfully.",
+            new Dictionary<string, object>
+            {
+                { "tag", local_tag },
+                { "records", list_records },
+                { "mode", view_mode },
+            }
+        );
     }
 }

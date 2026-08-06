@@ -1,5 +1,6 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
+using LogMate.Common.Http;
 using LogMate.Domain.Models;
 using LogMate.Infrastructure.Extensions;
 using System.Net;
@@ -26,19 +27,13 @@ public class AddServiceOption
         var payload = JsonConvert.DeserializeObject<AddServiceOptionRequest>(body);
 
         if (payload.Name.IsNullOrEmpty())
-            throw new ApiException(HttpStatusCode.BadRequest, "Invalid payload");
+            throw new BadRequestException("Invalid payload");
 
-        var status = await _service.AddServiceOptionAsync(payload);
+        var (status, id) = await _service.AddServiceOptionAsync(payload);
 
         if (status == HttpStatusCode.Conflict)
-            throw new ApiException(HttpStatusCode.Conflict, "Service option name already exists");
+            throw new ConflictException("Service option name already exists", new List<int> { id });
 
-        if (status != HttpStatusCode.OK)
-            throw new ApiException(HttpStatusCode.InternalServerError, "Failed to create service option");
-
-        var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteStringAsync("Service option created successfully");
-
-        return response;
+        return await ApiResponseFactory.Success(req, "Service option", id, ActionType.Created);
     }
 }

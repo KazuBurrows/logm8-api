@@ -1,5 +1,6 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
+using LogMate.Common.Http;
 using LogMate.Domain.Models;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
@@ -25,19 +26,16 @@ public class AddServiceOptionServiceType
         var payload = JsonConvert.DeserializeObject<AddServiceTypeRequest>(body);
 
         if (payload == null || string.IsNullOrEmpty(payload.OptionId))
-            throw new ApiException(HttpStatusCode.BadRequest, "Invalid payload");
+            throw new BadRequestException("Invalid payload");
 
         var status = await _service.AddServiceOptionServiceTypeAsync(payload);
 
         if (status == HttpStatusCode.Conflict)
-            throw new ApiException(HttpStatusCode.Conflict, "Service type already exists");
+            throw new ConflictException(
+                "Service type already exists",
+                new List<int> { int.Parse(payload.OptionId), int.Parse(payload.ServiceTypeId) }
+            );
 
-        if (status != HttpStatusCode.OK)
-            throw new ApiException(HttpStatusCode.InternalServerError, "Failed to link service type");
-
-        var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteStringAsync("Service type linked successfully");
-
-        return response;
+        return await ApiResponseFactory.Ok(req, "Service type linked successfully");
     }
 }

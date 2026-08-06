@@ -54,16 +54,6 @@ namespace Company.Function
                 var response = await resultSetIterator.ReadNextAsync();
                 totalRequestCharge += response.RequestCharge;
                 results.AddRange(response);
-
-                if (logger != null && response.Diagnostics.GetClientElapsedTime() > TimeSpan.FromSeconds(1))
-                {
-                    logger.LogWarning(
-                        "Slow Cosmos page in GetRecordsByTagId for {TagId}: {Elapsed}ms, {Diagnostics}",
-                        tagId,
-                        response.Diagnostics.GetClientElapsedTime().TotalMilliseconds,
-                        response.Diagnostics.ToString()
-                    );
-                }
             }
 
             if (logger != null)
@@ -389,15 +379,6 @@ namespace Company.Function
                             elapsed.TotalMilliseconds,
                             response.RequestCharge
                         );
-
-                        if (elapsed > TimeSpan.FromSeconds(1))
-                        {
-                            logger.LogWarning(
-                                "Slow Cosmos call in GetTagInfo for {TagId}: {Diagnostics}",
-                                tagId,
-                                response.Diagnostics.ToString()
-                            );
-                        }
                     }
 
                     var tag = response.FirstOrDefault();

@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.Json.Nodes;
 using Company.Function;
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
@@ -128,11 +127,10 @@ public class ServiceRecordItem(IServiceRecordService serviceRecord, ILogger<Serv
                 record.FileUrls.Add(url);
             }
 
-            // Consume token
-            string str_log = await SqlFunctions.IsOneLifeUrlConsumed(record.Token);
-            var log = JsonNode.Parse(str_log)?.AsObject();
+            // Reject expired one-life tokens before writing anything
+            var (logId, _) = await SqlFunctions.EnsureOneLifeTokenNotExpiredAsync(record.Token, _logger);
 
-            record.TagId = log?["LogId"]?.ToString() ?? string.Empty;
+            record.TagId = logId ?? string.Empty;
             record.id = Guid.NewGuid().ToString();
 
             var result = await CosmosFunctions.InsertRecord(record);

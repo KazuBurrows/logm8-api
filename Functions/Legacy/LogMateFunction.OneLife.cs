@@ -1,4 +1,7 @@
+using LogMate.Application.Exceptions;
+using LogMate.Common.Http;
 using LogMate.Domain.Models;
+using System.Net;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -139,17 +142,21 @@ namespace Company.Function
             int isConfigured = await CosmosFunctions.IsTagConfigured(id);
             _logger.LogInformation("isConfigured: " + isConfigured);
 
-            if (isConfigured == 1)
-            {
-                string tokenUrl = await SqlFunctions.GenerateOneLifeUrlAsync(id, (int)UserMode.Service, null);
-                return new OkObjectResult(new { success = true, url = $"{BaseLogm8Url}/log?token={tokenUrl}" });
-            }
-            else if (isConfigured == -1)
-            {
-                return new NotFoundResult();
-            }
+            if (isConfigured == -1)
+                throw new NotFoundException("Tag not found.");
 
-            return new OkObjectResult(new { success = false, url = $"{BaseLogm8Url}/tag/create?token={id}" });
+            string url = isConfigured == 1
+                ? $"{BaseLogm8Url}/log?token={await SqlFunctions.GenerateOneLifeUrlAsync(id, (int)UserMode.Service, null)}"
+                : $"{BaseLogm8Url}/tag/create?token={id}";
+
+            var body = ApiResponseFactory.Build(
+                HttpStatusCode.OK,
+                "Success",
+                "OneLife URL resolved successfully.",
+                new Dictionary<string, object> { { "success", isConfigured == 1 }, { "url", url } }
+            );
+
+            return new ObjectResult(body) { StatusCode = (int)HttpStatusCode.OK };
         }
 
         [Function("ConsumeOneLifeUrl")]

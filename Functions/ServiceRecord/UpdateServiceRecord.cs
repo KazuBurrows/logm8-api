@@ -1,6 +1,7 @@
 using System.Net;
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
+using LogMate.Common.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -21,12 +22,17 @@ public class UpdateServiceRecord
     {
         var formData = await req.ReadFormAsync();
         if (formData == null)
-            throw new ApiException(HttpStatusCode.BadRequest, "Invalid form data");
+            throw new BadRequestException("Invalid form data");
 
         var record = await _service.UpdateServiceRecordAsync(formData);
 
-        return new OkObjectResult(
-            new { success = true, message = "Service record updated successfully", data = record }
+        var body = ApiResponseFactory.Build(
+            HttpStatusCode.OK,
+            "Successfully Updated",
+            "Service record was successfully updated.",
+            new Dictionary<string, object> { { "item", record! } }
         );
+
+        return new ObjectResult(body) { StatusCode = (int)HttpStatusCode.OK };
     }
 }

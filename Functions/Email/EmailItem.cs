@@ -1,5 +1,6 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
+using LogMate.Common.Http;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -24,7 +25,7 @@ public class EmailItem
         var body = await req.ReadFromJsonAsync<EmailItemRequest>();
 
         if (body == null || string.IsNullOrEmpty(body.FromEmail))
-            throw new ApiException(HttpStatusCode.BadRequest, "Missing required fields: fromEmail, fromName, message.");
+            throw new BadRequestException("Missing required fields: fromEmail, fromName, message.");
 
         var safeName = HtmlEncode(body.FromName);
         var safeEmail = HtmlEncode(body.FromEmail);
@@ -61,9 +62,7 @@ public class EmailItem
             htmlBody: htmlBody
         );
 
-        var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteStringAsync("Email sent successfully.");
-        return response;
+        return await ApiResponseFactory.Ok(req, "Email sent successfully.");
     }
 }
 

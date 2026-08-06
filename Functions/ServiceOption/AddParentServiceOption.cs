@@ -1,5 +1,6 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
+using LogMate.Common.Http;
 using LogMate.Domain.Models;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
@@ -25,19 +26,13 @@ public class AddParentServiceOption
         var payload = JsonConvert.DeserializeObject<AddParentOptionRequest>(body);
 
         if (payload == null || payload.OptionId <= 0 || payload.ParentId <= 0)
-            throw new ApiException(HttpStatusCode.BadRequest, "Invalid payload");
+            throw new BadRequestException("Invalid payload");
 
         var status = await _service.AddParentServiceOptionAsync(payload);
 
         if (status == HttpStatusCode.Conflict)
-            throw new ApiException(HttpStatusCode.Conflict, "Parent option already exists");
+            throw new ConflictException("Parent option already exists", new List<int> { payload.OptionId, payload.ParentId });
 
-        if (status != HttpStatusCode.OK)
-            throw new ApiException(HttpStatusCode.InternalServerError, "Failed to link parent option");
-
-        var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteStringAsync("Parent option linked successfully");
-
-        return response;
+        return await ApiResponseFactory.Ok(req, "Parent option linked successfully");
     }
 }

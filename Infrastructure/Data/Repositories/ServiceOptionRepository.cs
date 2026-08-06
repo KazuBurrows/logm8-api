@@ -63,7 +63,7 @@ public class ServiceOptionRepository : IServiceOptionRepository
         return await QueryFlatOptions(conn, sql);
     }
 
-    public async Task<int> AddServiceOptionAsync(string name, string? description, int? categoryId)
+    public async Task<(int Id, bool AlreadyExisted)> AddServiceOptionAsync(string name, string? description, int? categoryId)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be empty", nameof(name));
@@ -75,8 +75,11 @@ public class ServiceOptionRepository : IServiceOptionRepository
         const string sql =
             @"
             DECLARE @ServiceOptionId INT;
+            DECLARE @AlreadyExisted BIT = 0;
 
-            IF NOT EXISTS (SELECT 1 FROM dbo.ServiceOption WHERE Name = @Name)
+            SELECT @ServiceOptionId = Id FROM dbo.ServiceOption WHERE Name = @Name;
+
+            IF @ServiceOptionId IS NULL
             BEGIN
                 INSERT INTO dbo.ServiceOption (Name, Description, CategoryId)
                 VALUES (@Name, @Description, @CategoryId);
@@ -84,7 +87,7 @@ public class ServiceOptionRepository : IServiceOptionRepository
             END
             ELSE
             BEGIN
-                SELECT @ServiceOptionId = Id FROM dbo.ServiceOption WHERE Name = @Name;
+                SET @AlreadyExisted = 1;
             END
 
             IF NOT EXISTS (
@@ -96,7 +99,7 @@ public class ServiceOptionRepository : IServiceOptionRepository
                 VALUES (3, @ServiceOptionId);
             END
 
-            SELECT @ServiceOptionId;";
+            SELECT @ServiceOptionId, @AlreadyExisted;";
 
         using var cmd = new SqlCommand(sql, conn, transaction);
         cmd.Parameters.Add("@Name", SqlDbType.NVarChar, 255).Value = name.Trim();
@@ -105,10 +108,15 @@ public class ServiceOptionRepository : IServiceOptionRepository
         cmd.Parameters.Add("@CategoryId", SqlDbType.Int).Value =
             categoryId.HasValue && categoryId.Value > 0 ? categoryId.Value : DBNull.Value;
 
-        var serviceOptionId = (int)await cmd.ExecuteScalarAsync();
+        using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+        var serviceOptionId = reader.GetInt32(0);
+        var alreadyExisted = reader.GetBoolean(1);
+        reader.Close();
+
         transaction.Commit();
 
-        return serviceOptionId;
+        return (serviceOptionId, alreadyExisted);
     }
 
     public async Task<int> AddParentServiceOptionAsync(int optionId, int parentId)

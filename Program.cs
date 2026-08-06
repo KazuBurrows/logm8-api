@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
-builder.UseMiddleware<ExceptionHandlingMiddleware>();
+builder.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 builder.UseMiddleware<SqlInjectionMiddleware>();
 
 // 1. Register the services first

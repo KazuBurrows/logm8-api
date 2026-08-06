@@ -19,14 +19,15 @@ public class NfcTagService : INfcTagService
         return await _repo.GetNfcTagIdByUriTokenAsync(uriToken);
     }
 
-    public async Task<HttpStatusCode> ReplaceAssetNfcTagAsync(ReplaceNfcTagRequest payload)
+    public async Task<(HttpStatusCode Status, int MigratedCount)> ReplaceAssetNfcTagAsync(ReplaceNfcTagRequest payload)
     {
         var rowsAffected = await _repo.ReplaceAllRecordsForTagAsync(
             payload.OldTagId,
             payload.NewTagId
         );
 
-        return rowsAffected > 0 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
+        var status = rowsAffected > 0 ? HttpStatusCode.OK : HttpStatusCode.NotFound;
+        return (status, rowsAffected);
     }
 
     public async Task<bool> UpdateAssetNfcTagAsync(UpdateAssetNfcTagRequest request)
