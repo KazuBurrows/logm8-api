@@ -1,6 +1,8 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
 using LogMate.Common.Http;
+using LogMate.Common.Validation;
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -22,10 +24,7 @@ public class EmailItem
     public async Task<HttpResponseData> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
     {
-        var body = await req.ReadFromJsonAsync<EmailItemRequest>();
-
-        if (body == null || string.IsNullOrEmpty(body.FromEmail))
-            throw new BadRequestException("Missing required fields: fromEmail, fromName, message.");
+        var body = ModelValidator.Validate(await req.ReadFromJsonAsync<EmailItemRequest>());
 
         var safeName = HtmlEncode(body.FromName);
         var safeEmail = HtmlEncode(body.FromEmail);
@@ -68,7 +67,12 @@ public class EmailItem
 
 public class EmailItemRequest
 {
+    [Required, EmailAddress, StringLength(320)]
     public string FromEmail { get; set; } = "";
+
+    [Required, StringLength(200, MinimumLength = 1)]
     public string FromName { get; set; } = "";
+
+    [Required, StringLength(5000, MinimumLength = 1)]
     public string Message { get; set; } = "";
 }

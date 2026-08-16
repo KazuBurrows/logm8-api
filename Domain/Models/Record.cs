@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
 
 namespace LogMate.Domain.Models;
@@ -48,15 +49,33 @@ public class ServiceRecordRequest
 
 public class AddServiceRecordRequest
 {
+    [Required]
     public string Token { get; set; } = string.Empty;
+
     public string? Id { get; set; }
     public string TagId { get; set; } = string.Empty;
+
+    [Required]
     public string EnteredDate { get; set; } = string.Empty;
+
+    [Required]
     public string ServicedDate { get; set; } = string.Empty;
+
+    [Required, StringLength(200, MinimumLength = 1)]
     public string MechanicName { get; set; } = string.Empty;
+
+    [Required, RegularExpression(@"^\d+$", ErrorMessage = "Odometer must be numeric.")]
     public string Odometer { get; set; } = string.Empty;
+
+    [Required, StringLength(200, MinimumLength = 1)]
     public string ServiceCategory { get; set; } = string.Empty;
+
+    [Required, StringLength(200, MinimumLength = 1)]
     public string ServiceOption { get; set; } = string.Empty;
+
+    [Required, StringLength(200, MinimumLength = 1)]
     public string ServiceType { get; set; } = string.Empty;
+
+    [StringLength(2000)]
     public string? Comment { get; set; }
 }

@@ -1,8 +1,8 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
 using LogMate.Common.Http;
+using LogMate.Common.Validation;
 using LogMate.Domain.Models;
-using LogMate.Infrastructure.Extensions;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -23,11 +23,7 @@ public class AddServiceOption
     )
     {
         var body = await new StreamReader(req.Body).ReadToEndAsync();
-
-        var payload = JsonConvert.DeserializeObject<AddServiceOptionRequest>(body);
-
-        if (payload.Name.IsNullOrEmpty())
-            throw new BadRequestException("Invalid payload");
+        var payload = ModelValidator.Validate(JsonConvert.DeserializeObject<AddServiceOptionRequest>(body));
 
         var (status, id) = await _service.AddServiceOptionAsync(payload);
 

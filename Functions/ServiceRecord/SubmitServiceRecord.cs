@@ -23,12 +23,9 @@ public class SubmitRecord
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req
     )
     {            
-        req.Headers.TryGetValues("Authorization", out var authValues);
         req.Headers.TryGetValues("X-Tag-Id", out var tagIdValues);
-        string? authorization = authValues?.FirstOrDefault();
         string? tagIdHeader = tagIdValues?.FirstOrDefault();
 
-        _logger.LogInformation("Authorization: {Authorization}", authorization);
         _logger.LogInformation("X-Tag-Id: {TagIdHeader}", tagIdHeader);
 
         if (!req.Headers.TryGetValues("Content-Type", out var values))

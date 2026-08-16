@@ -1,6 +1,7 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
 using LogMate.Common.Http;
+using LogMate.Common.Validation;
 using LogMate.Domain.Models;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
@@ -22,16 +23,7 @@ public class ReplaceAssetNfcTag
     )
     {
         var body = await new StreamReader(req.Body).ReadToEndAsync();
-
-        var payload = JsonConvert.DeserializeObject<ReplaceNfcTagRequest>(body);
-        if (
-            payload == null
-            || string.IsNullOrEmpty(payload.OldTagId)
-            || string.IsNullOrEmpty(payload.NewTagId)
-        )
-        {
-            throw new BadRequestException("Invalid request payload");
-        }
+        var payload = ModelValidator.Validate(JsonConvert.DeserializeObject<ReplaceNfcTagRequest>(body));
 
         var (status, migratedCount) = await _service.ReplaceAssetNfcTagAsync(payload);
 

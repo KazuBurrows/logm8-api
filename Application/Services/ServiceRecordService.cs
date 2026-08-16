@@ -88,7 +88,13 @@ public class ServiceRecordService : IServiceRecordService
             throw new ApiException(HttpStatusCode.BadRequest, "Missing record Id");
 
         string token = record["Token"];
-        string tagId = record["TagId"];
+        if (string.IsNullOrEmpty(token))
+            throw new ApiException(HttpStatusCode.BadRequest, "Missing token");
+
+        string tagId = await _nfcTagService.GetNfcTagIdByUriTokenAsync(token);
+        if (string.IsNullOrEmpty(tagId))
+            throw new ApiException(HttpStatusCode.BadRequest, "Invalid NFC token");
+
         string enteredDate = record["EnteredDate"];
         string servicedDate = record["ServicedDate"];
         string mechanicName = record["MechanicName"];

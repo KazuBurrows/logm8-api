@@ -1,6 +1,7 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
 using LogMate.Common.Http;
+using LogMate.Common.Validation;
 using LogMate.Domain.Models;
 using System.Net;
 using Microsoft.AspNetCore.Http;
@@ -25,19 +26,13 @@ public class UpdateAssetNfcTagAsync
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req
     )
     {
-        req.Headers.TryGetValues("Authorization", out var authValues);
         req.Headers.TryGetValues("X-Tag-Id", out var tagIdValues);
-        string? authorization = authValues?.FirstOrDefault();
         string? tagIdHeader = tagIdValues?.FirstOrDefault();
 
-        _logger.LogInformation("Authorization: {Authorization}", authorization);
         _logger.LogInformation("X-Tag-Id: {TagIdHeader}", tagIdHeader);
 
         var body = await req.ReadAsStringAsync();
-        var request = JsonConvert.DeserializeObject<UpdateAssetNfcTagRequest>(body);
-
-        if (request == null)
-            throw new BadRequestException("Invalid request body");
+        var request = ModelValidator.Validate(JsonConvert.DeserializeObject<UpdateAssetNfcTagRequest>(body));
 
         var success = await _service.UpdateAssetNfcTagAsync(request);
 

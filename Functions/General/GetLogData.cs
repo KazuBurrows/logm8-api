@@ -23,12 +23,9 @@ public class GetLogData
     {
         _logger.LogInformation("GetLogData function triggered.");
 
-        req.Headers.TryGetValues("Authorization", out var authValues);
         req.Headers.TryGetValues("X-Tag-Id", out var tagIdValues);
-        string? authorization = authValues?.FirstOrDefault();
         string? tagIdHeader = tagIdValues?.FirstOrDefault();
 
-        _logger.LogInformation("Authorization: {Authorization}", authorization);
         _logger.LogInformation("X-Tag-Id: {TagIdHeader}", tagIdHeader);
 
         var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
@@ -40,13 +37,11 @@ public class GetLogData
             throw new BadRequestException("Missing token.");
         }
 
-        _logger.LogInformation("Processing token: {Token}", tokenKey);
-
         string str_log = await SqlFunctions.IsOneLifeUrlExpired(tokenKey, _logger);
 
         if (string.IsNullOrEmpty(str_log))
         {
-            _logger.LogWarning("SQL returned null/empty for token: {Token}", tokenKey);
+            _logger.LogWarning("SQL returned null/empty for provided token.");
             throw new NotFoundException("Not found.");
         }
 

@@ -1,6 +1,7 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
 using LogMate.Common.Http;
+using LogMate.Common.Validation;
 using LogMate.Domain.Models;
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
@@ -22,11 +23,7 @@ public class AddParentServiceOption
     )
     {
         var body = await new StreamReader(req.Body).ReadToEndAsync();
-
-        var payload = JsonConvert.DeserializeObject<AddParentOptionRequest>(body);
-
-        if (payload == null || payload.OptionId <= 0 || payload.ParentId <= 0)
-            throw new BadRequestException("Invalid payload");
+        var payload = ModelValidator.Validate(JsonConvert.DeserializeObject<AddParentOptionRequest>(body));
 
         var status = await _service.AddParentServiceOptionAsync(payload);
 

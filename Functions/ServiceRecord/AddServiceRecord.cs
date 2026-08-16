@@ -1,5 +1,6 @@
 using LogMate.Application.Exceptions;
 using LogMate.Application.Interfaces;
+using LogMate.Common.Validation;
 using LogMate.Domain.Models;
 using System.IO;
 using System.Net;
@@ -26,10 +27,7 @@ public class AddServiceRecord
         if (string.IsNullOrWhiteSpace(body))
             throw new ApiException(HttpStatusCode.BadRequest, "Request body is empty");
 
-        var request = JsonConvert.DeserializeObject<AddServiceRecordRequest>(body);
-
-        if (request == null)
-            throw new ApiException(HttpStatusCode.BadRequest, "Invalid JSON payload");
+        var request = ModelValidator.Validate(JsonConvert.DeserializeObject<AddServiceRecordRequest>(body));
 
         var serviceRequest = new ServiceRecordRequest
         {
