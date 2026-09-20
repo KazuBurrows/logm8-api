@@ -11,26 +11,6 @@ namespace Company.Function
         private static readonly string DatabaseId = "LogmateCosmosDB";
         private static CosmosClient cosmosClient = new CosmosClient(EndpointUri, PrimaryKey);
 
-        public static async Task<Record> InsertRecord(Record record)
-        {
-            string ContainerId = "records";
-
-            try
-            {
-                var _container = cosmosClient.GetContainer(DatabaseId, ContainerId);
-                ItemResponse<Record> response = await _container.CreateItemAsync(
-                    record,
-                    new PartitionKey(record.TagId)
-                );
-                return response.Resource;
-            }
-            catch (CosmosException ex)
-            {
-                Console.WriteLine($"Error occurred: {ex.Message}");
-                return null;
-            }
-        }
-
         public static async Task<List<Record>> GetRecordsByTagId(string tagId, ILogger? logger = null)
         {
             string ContainerId = "records";

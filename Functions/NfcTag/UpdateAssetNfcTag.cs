@@ -23,7 +23,7 @@ public class UpdateAssetNfcTagAsync
 
     [Function("UpdateAssetNfcTagAsync")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req
     )
     {
         req.Headers.TryGetValues("X-Tag-Id", out var tagIdValues);

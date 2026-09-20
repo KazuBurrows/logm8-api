@@ -36,6 +36,21 @@ public class ServiceRecordRepository : IServiceRecordRepository
         }
     }
 
+    public async Task<Record?> GetByIdAsync(string id)
+    {
+        var container = _factory.GetContainer(CosmosContainer.Records.GetName());
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.id = @id").WithParameter("@id", id);
+
+        using var iterator = container.GetItemQueryIterator<Record>(query);
+        if (iterator.HasMoreResults)
+        {
+            var response = await iterator.ReadNextAsync();
+            return response.FirstOrDefault();
+        }
+
+        return null;
+    }
+
     public async Task<string> FileUploadAsync(IFormFile file)
     {
         var container = _blobFactory.GetContainer(BlobContainer.Receipts.GetName());

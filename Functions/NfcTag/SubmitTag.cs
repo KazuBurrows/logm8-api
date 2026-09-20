@@ -18,7 +18,7 @@ public class SubmitTag
 
     [Function("SubmitTag")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         req.Headers.TryGetValues("X-Tag-Id", out var tagIdValues);
         string? tagIdHeader = tagIdValues?.FirstOrDefault();

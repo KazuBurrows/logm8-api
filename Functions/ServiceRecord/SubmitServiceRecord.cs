@@ -1,126 +1,38 @@
-using LogMate.Application.Exceptions;
-using LogMate.Common.Http;
-using LogMate.Domain.Models;
 using System.Net;
-using Company.Function;
-using Microsoft.AspNetCore.WebUtilities;
+using LogMate.Application.Exceptions;
+using LogMate.Application.Interfaces;
+using LogMate.Common.Http;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Extensions.Logging;
-using Microsoft.Net.Http.Headers;
 
 public class SubmitRecord
 {
-    private readonly ILogger<SubmitRecord> _logger;
+    private readonly IServiceRecordService _service;
 
-    public SubmitRecord(ILogger<SubmitRecord> logger)
+    public SubmitRecord(IServiceRecordService service)
     {
-        _logger = logger;
+        _service = service;
     }
 
     [Function("SubmitRecord")]
-    public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req
+    public async Task<IActionResult> Run(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req
     )
-    {            
-        req.Headers.TryGetValues("X-Tag-Id", out var tagIdValues);
-        string? tagIdHeader = tagIdValues?.FirstOrDefault();
+    {
+        var formData = await req.ReadFormAsync();
+        if (formData == null)
+            throw new BadRequestException("Invalid form data");
 
-        _logger.LogInformation("X-Tag-Id: {TagIdHeader}", tagIdHeader);
+        var record = await _service.AddServiceRecordAsync(formData);
 
-        if (!req.Headers.TryGetValues("Content-Type", out var values))
-            throw new BadRequestException("Missing Content-Type header");
+        var body = ApiResponseFactory.Build(
+            HttpStatusCode.Created,
+            "Successfully Created",
+            "Service record was successfully created.",
+            new Dictionary<string, object> { { "item", record! } }
+        );
 
-        var contentType = MediaTypeHeaderValue.Parse(values.First());
-        var boundary = HeaderUtilities.RemoveQuotes(contentType.Boundary).Value;
-
-        if (string.IsNullOrEmpty(boundary))
-            throw new BadRequestException("Missing multipart boundary");
-
-        var reader = new MultipartReader(boundary, req.Body);
-
-        var formFields = new Dictionary<string, string>();
-        var uploadedFiles = new List<(string FileName, Stream Content, string ContentType)>();
-
-        MultipartSection section;
-        while ((section = await reader.ReadNextSectionAsync()) != null)
-        {
-            var hasContentDisposition = ContentDispositionHeaderValue.TryParse(
-                section.ContentDisposition,
-                out var disposition
-            );
-
-            if (!hasContentDisposition)
-                continue;
-
-            if (disposition.IsFileDisposition())
-            {
-                uploadedFiles.Add((disposition.FileName.Value, section.Body, section.ContentType));
-            }
-            else if (disposition.IsFormDisposition())
-            {
-                using var readerStream = new StreamReader(section.Body);
-                var value = await readerStream.ReadToEndAsync();
-                formFields[disposition.Name.Value] = value;
-            }
-        }
-
-        // Map fields
-        var record = new Record
-        {
-            Token = formFields.GetValueOrDefault("Token"),
-            TagId = formFields.GetValueOrDefault("TagId"),
-            EnteredDate = formFields.GetValueOrDefault("EnteredDate"),
-            ServicedDate = formFields.GetValueOrDefault("ServicedDate"),
-            MechanicName = formFields.GetValueOrDefault("MechanicName"),
-            Odometer = formFields.GetValueOrDefault("Odometer"),
-            ServiceCategory = formFields.GetValueOrDefault("ServiceCategory"),
-            ServiceType = formFields.GetValueOrDefault("ServiceType"),
-            ServiceOption = formFields.GetValueOrDefault("ServiceOption"),
-
-            Comment = formFields.GetValueOrDefault("Comment"),
-            FileUrls = new List<string>(),
-        };
-
-        // Upload files
-        var allowedContentTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "image/heif",
-            "application/pdf",
-        };
-        var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif", ".pdf",
-        };
-
-        foreach (var file in uploadedFiles)
-        {
-            var ext = Path.GetExtension(file.FileName);
-            if (!allowedContentTypes.Contains(file.ContentType) || !allowedExtensions.Contains(ext))
-            {
-                _logger.LogWarning("Rejected file upload: {FileName} ({ContentType})", file.FileName, file.ContentType);
-                throw new UnsupportedMediaTypeException($"File type not allowed: {file.FileName}. Only images and PDFs are accepted.");
-            }
-
-            _logger.LogInformation("Uploading file: {file}", file.FileName);
-
-            string url = await BlobFunctions.UploadBlob(
-                file.Content,
-                file.FileName,
-                file.ContentType
-            );
-
-            record.FileUrls.Add(url);
-        }
-
-        // Reject expired one-life tokens before writing anything
-        var (logId, _) = await SqlFunctions.EnsureOneLifeTokenNotExpiredAsync(record.Token, _logger);
-
-        record.TagId = logId;
-        record.id = Guid.NewGuid().ToString();
-
-        var result = await CosmosFunctions.InsertRecord(record);
-
-        return await ApiResponseFactory.Success(req, "Service record", result, ActionType.Created);
+        return new ObjectResult(body) { StatusCode = (int)HttpStatusCode.Created };
     }
 }

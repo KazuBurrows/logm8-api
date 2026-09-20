@@ -67,6 +67,11 @@ public class GetLogData
         Tag local_tag = tagTask.Result;
         List<Record> list_records = recordsTask.Result;
         int? view_mode = log?["Mode"]?.GetValue<int>();
+        string? callerUserId = log?["UserId"]?.GetValue<string?>();
+
+        List<ServiceRecordView> record_views = list_records
+            .Select(r => ServiceRecordView.FromRecord(r, callerUserId, view_mode))
+            .ToList();
 
         _logger.LogInformation("Fetched {RecordCount} records for LogId: {LogId}", list_records?.Count ?? 0, logId);
 
@@ -78,7 +83,7 @@ public class GetLogData
             new Dictionary<string, object>
             {
                 { "tag", local_tag },
-                { "records", list_records },
+                { "records", record_views },
                 { "mode", view_mode },
             }
         );

@@ -18,6 +18,7 @@ public class Record
     public string ServiceOption { get; set; }
     public string Comment { get; set; }
     public List<string> FileUrls { get; set; }
+    public string? UserId { get; set; }
 }
 
 public class ServiceRecordRequest

@@ -9,7 +9,7 @@ namespace Company.Function
 {
     public partial class SqlFunctions
     {
-        public static async Task<(string LogId, int? Mode)> EnsureOneLifeTokenNotExpiredAsync(
+        public static async Task<(string LogId, int? Mode, string? UserId)> EnsureOneLifeTokenNotExpiredAsync(
             string tokenKey,
             ILogger? logger = null
         )
@@ -27,7 +27,8 @@ namespace Company.Function
             }
 
             int? mode = log?["Mode"]?.GetValue<int?>();
-            return (logId, mode);
+            string? userId = log?["UserId"]?.GetValue<string?>();
+            return (logId, mode, userId);
         }
 
         public static async Task<string> GenerateOneLifeUrlAsync(
@@ -93,10 +94,11 @@ namespace Company.Function
                 ["LogId"] = "Not Found",
                 ["TTL"] = null,
                 ["Mode"] = 1,
+                ["UserId"] = null,
             };
 
             string query =
-                "SELECT TOP 1 [LogId], [TTL], [Mode] FROM [dbo].[onelifes] WHERE [TokenKey] = @TokenKey";
+                "SELECT TOP 1 [LogId], [TTL], [Mode], [UserId] FROM [dbo].[onelifes] WHERE [TokenKey] = @TokenKey";
 
             var stopwatch = logger != null ? System.Diagnostics.Stopwatch.StartNew() : null;
 
@@ -129,12 +131,16 @@ namespace Company.Function
                                 int? recordMode = reader.IsDBNull(reader.GetOrdinal("Mode"))
                                     ? null
                                     : reader.GetInt32(reader.GetOrdinal("Mode"));
+                                string? recordUserId = reader.IsDBNull(reader.GetOrdinal("UserId"))
+                                    ? null
+                                    : reader.GetString(reader.GetOrdinal("UserId"));
 
                                 var record = new JsonObject
                                 {
                                     ["LogId"] = recordLogId,
                                     ["TTL"] = recordTtl,
                                     ["Mode"] = recordMode,
+                                    ["UserId"] = recordUserId,
                                 };
 
                                 logger?.LogInformation(
@@ -161,6 +167,7 @@ namespace Company.Function
                     ["LogId"] = "Not Found",
                     ["TTL"] = null,
                     ["Mode"] = null,
+                    ["UserId"] = null,
                 };
                 return errorLog.ToString();
             }

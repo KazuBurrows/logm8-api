@@ -19,6 +19,11 @@ public class NfcTagService : INfcTagService
         return await _repo.GetNfcTagIdByUriTokenAsync(uriToken);
     }
 
+    public async Task<OneLifeTokenInfo?> GetOneLifeTokenAsync(string token)
+    {
+        return await _repo.GetOneLifeTokenAsync(token);
+    }
+
     public async Task<(HttpStatusCode Status, int MigratedCount)> ReplaceAssetNfcTagAsync(ReplaceNfcTagRequest payload)
     {
         var rowsAffected = await _repo.ReplaceAllRecordsForTagAsync(

@@ -33,6 +33,32 @@ public class NfcTagRepository : INfcTagRepository
         return result as string;
     }
 
+    public async Task<OneLifeTokenInfo?> GetOneLifeTokenAsync(string token)
+    {
+        const string query =
+            "SELECT TOP 1 [LogId], [UserId], [Mode], [TTL] FROM [dbo].[onelifes] WHERE [TokenKey] = @TokenKey";
+
+        using var conn = _sqlFactory.Create();
+        await conn.OpenAsync();
+
+        using var command = new SqlCommand(query, conn);
+        command.Parameters.AddWithValue("@TokenKey", token);
+
+        using var reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+            return null;
+
+        string? logId = reader.IsDBNull(reader.GetOrdinal("LogId")) ? null : reader.GetString(reader.GetOrdinal("LogId"));
+        string? userId = reader.IsDBNull(reader.GetOrdinal("UserId")) ? null : reader.GetString(reader.GetOrdinal("UserId"));
+        int? mode = reader.IsDBNull(reader.GetOrdinal("Mode")) ? null : reader.GetInt32(reader.GetOrdinal("Mode"));
+        DateTime? ttl = reader.IsDBNull(reader.GetOrdinal("TTL")) ? null : reader.GetDateTime(reader.GetOrdinal("TTL"));
+
+        if (string.IsNullOrEmpty(logId) || !ttl.HasValue || ttl.Value < DateTime.UtcNow)
+            return null;
+
+        return new OneLifeTokenInfo(logId, userId, mode, ttl.Value);
+    }
+
     public async Task<int> ReplaceAllRecordsForTagAsync(string oldTagId, string newTagId)
     {
         var container = _factory.GetContainer(CosmosContainer.Records.GetName());

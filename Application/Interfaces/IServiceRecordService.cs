@@ -9,11 +9,11 @@ public interface IServiceRecordService
         ServiceRecordRequest request,
         IReadOnlyList<string>? fileUrls = null
     );
+    Task<Record> AddServiceRecordAsync(IFormCollection form);
     Task<Record> UpdateServiceRecordAsync(IFormCollection record);
+    Task<Record> UpdateServiceRecordAsync(string id, IFormCollection record);
 
-
-
-    Task<Record> GetById(int id);
+    Task<Record?> GetById(string id);
     Task<IEnumerable<Record>> GetAll();
     Task<Record> Create(Record r);
     Task<bool> Delete(int id);

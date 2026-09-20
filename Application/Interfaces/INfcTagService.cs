@@ -8,4 +8,5 @@ public interface INfcTagService
     Task<bool> UpdateAssetNfcTagAsync(UpdateAssetNfcTagRequest request);
     Task<(HttpStatusCode Status, int MigratedCount)> ReplaceAssetNfcTagAsync(ReplaceNfcTagRequest payload);
     Task<string> GetNfcTagIdByUriTokenAsync(string uriToken);
+    Task<OneLifeTokenInfo?> GetOneLifeTokenAsync(string token);
 }
